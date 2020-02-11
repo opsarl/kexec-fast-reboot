@@ -10,7 +10,7 @@ detach_wait=3
 
 usage() {
 	cat << EOF
-Usage: kreboot [option ...] [kernel|boot-index]
+Usage: fast-reboot [option ...] [kernel|boot-index]
 Options are:
 	--wait, -w N	wait N seconds before reboot (default $wait)
 	--nowait	don't wait, reboot immediately
