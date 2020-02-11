@@ -1,5 +1,7 @@
 # kexec-fast-reboot
 
+Reboot your server in seconds, not minutes!
+
 ## Overview
 
 I was looking for a solution to reboot our HP Proliants without having to go 
