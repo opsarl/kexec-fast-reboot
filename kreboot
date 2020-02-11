@@ -99,6 +99,8 @@ if ! info=$(grubby --info=$target); then
 	exit 1
 fi
 eval $(echo "$info" | sed "s|^\(\S*\)=\([^'\"].*\)$|\1='\2'|")
+kernel=${kernel##*@}  # retain the part after the last @ in case of ZFS where the target is indicated
+initrd=${initrd##*@}  # retain the part after the last @ in case of ZFS where the target is indicated
 
 echo Booting $title...
 if [ "$wait" -ne 0 ]; then
