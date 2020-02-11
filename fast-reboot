@@ -102,11 +102,19 @@ eval $(echo "$info" | sed "s|^\(\S*\)=\([^'\"].*\)$|\1='\2'|")
 kernel=${kernel##*@}  # retain the part after the last @ in case of ZFS where the target is indicated
 initrd=${initrd##*@}  # retain the part after the last @ in case of ZFS where the target is indicated
 
-echo Booting $title...
+printf "\nBooting $title...\n"
+
 if [ "$wait" -ne 0 ]; then
-	echo Press Ctrl-C within $wait seconds to cancel
-	sleep $wait
+    printf "\nPress Ctrl-C within $wait seconds to cancel reboot\n\n"
+    count=0
+    while [ $count -lt $wait ]; do
+        printf $count
+        sleep 1
+        count=$(( $count + 1 ))
+    done
+    printf "\n"
 fi
+
 kexec -l "$kernel" --initrd="$initrd" --command-line="root=$root $args $kargs"
 
 if [ -z "detach" ]; then
