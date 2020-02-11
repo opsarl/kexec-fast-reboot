@@ -72,8 +72,9 @@ Options are:
 Usage: fast-reboot [option ...] [kernel|boot-index]
     --wait, -w N    Wait N seconds before reboot (default 10)
     --nowait        Don't wait, reboot immediately
-    --detach        Schedule reboot and return. Suitable to remote reboot.
-    --help, -h      Show help message
+    --nodetach, -n  Do not detach. By default it runs --detach 3
+    --detach, -d N  Schedule reboot in N seconds and return
+    --help, -h      Show this help message
     --kargs, k      Additional kernel arguments
 ```
 
