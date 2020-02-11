@@ -7,27 +7,29 @@ set -u
 # defaults
 wait=10
 detach_wait=3
+nodetach=
 
 usage() {
-	cat << EOF
+    cat << EOF
 Usage: fast-reboot [option ...] [kernel|boot-index]
 Options are:
-	--wait, -w N	wait N seconds before reboot (default $wait)
-	--nowait	don't wait, reboot immediately
-	--detach	Schedule reboot and return. Suitable to remote reboot.
-	--help, -h	show this help message
-	--kargs, k	additional kernel arguments
+    --wait, -w N    Wait N seconds before reboot (default $wait)
+    --nowait        Don't wait, reboot immediately
+    --nodetach, -n  Do not detach. By default it runs --detach $detach_wait
+    --detach, -d N  Schedule reboot in N seconds and return
+    --help, -h      Show this help message
+    --kargs, k      Additional kernel arguments
 
 Example:
-	$0 0	Boot kernel with index 0
+    $0 0    Boot kernel with index 0
 EOF
-	exit $1
+    exit $1
 }
 
 uerr() {
-	echo "ERROR: $*" 2>&1
-	echo
-	usage 1
+    echo "ERROR: $*" 2>&1
+    echo
+    usage 1
 }
 
 # Check that all programs we need are available, exit if not
@@ -38,71 +40,77 @@ hash grubby kexec systemctl
 target=''
 kargs=''
 while test $# -gt 0; do
-	case $1 in
-		-w|--wait)
-			if [ "$#" -lt 2 ]; then
-				uerr "Option $1 requires an argument"
-			fi
-			wait=$2
-			if ! printf "%f" $wait > /dev/null 2>&1; then
-				uerr "Option $1 argument not a number"
-			fi
-			shift
-			;;
-		--nowait)
-			wait=0
-			;;
-		--detach)
-			detach=yes
-			;;
-		--detach_wait)
-			if [ "$#" -lt 2 ]; then
-				uerr "Option $1 requires an argument"
-			fi
-			detach_wait=$2
-			if ! printf "%f" $detach_wait > /dev/null 2>&1; then
-				uerr "Option $1 argument not a number"
-			fi
-			shift
-			;;
-		-h|--help)
-			usage 0
-			;;
-		-k|--kargs)
-			kargs=$2
-			shift
-			;;
-		-*)
-			uerr "Unrecognized option: $1"
-			;;
-		*)
-			if [ -n "$target" ]; then
-				uerr "Extra arguments: $*"
-			fi
-			target=$1
-			;;
-	esac
-	shift
+    case $1 in
+        -w|--wait)
+            if [ "$#" -lt 2 ]; then
+                uerr "Option $1 requires an argument"
+            fi
+            wait=$2
+            if ! printf "%f" $wait > /dev/null 2>&1; then
+                uerr "Option $1 argument not a number"
+            fi
+            shift
+            ;;
+        --nowait)
+            wait=0
+            ;;
+        -n|--nodetach)
+            nodetach=yes
+            ;;
+        -d|--detach)
+            if [ "$#" -lt 2 ]; then
+                uerr "Option $1 requires an argument"
+            fi
+            detach_wait=$2
+            if ! printf "%f" $detach_wait > /dev/null 2>&1; then
+                uerr "Option $1 argument not a number"
+            fi
+            shift
+            ;;
+        -h|--help)
+            usage 0
+            ;;
+        -k|--kargs)
+            kargs=$2
+            shift
+            ;;
+        -*)
+            uerr "Unrecognized option: $1"
+            ;;
+        *)
+            if [ -n "$target" ]; then
+                uerr "Extra arguments: $*"
+            fi
+            target=$1
+            ;;
+    esac
+    shift
 done
 
 if [ -z "$target" ]; then
-	if ! target=$(grubby --default-kernel); then
-		# grubby prints error to stdout
-		echo "grubby: $target" 1>&2
-		exit 1
-	fi
+    if ! target=$(grubby --default-kernel); then
+        # grubby prints error to stdout
+        echo "grubby: $target" 1>&2
+        exit 1
+    fi
 fi
 
 if ! info=$(grubby --info=$target); then
-	# grubby prints error to stdout
-	echo "grubby: $info" 1>&2
-	exit 1
+    # grubby prints error to stdout
+    echo "grubby: $info" 1>&2
+    exit 1
 fi
 eval $(echo "$info" | sed "s|^\(\S*\)=\([^'\"].*\)$|\1='\2'|")
 kernel=${kernel##*@}  # retain the part after the last @ in case of ZFS where the target is indicated
 initrd=${initrd##*@}  # retain the part after the last @ in case of ZFS where the target is indicated
 
-printf "\nBooting $title...\n"
+printf "\nBooting $title.... "
+
+if [ -z "$nodetach" ]; then
+    printf "detached\n"
+else
+    printf "not detaching\n"
+fi
 
 if [ "$wait" -ne 0 ]; then
     printf "\nPress Ctrl-C within $wait seconds to cancel reboot\n\n"
@@ -117,8 +125,8 @@ fi
 
 kexec -l "$kernel" --initrd="$initrd" --command-line="root=$root $args $kargs"
 
-if [ -z "detach" ]; then
-    systemctl kexec
-else
+if [ -z "$nodetach" ]; then
     setsid bash -c "sleep $detach_wait; systemctl kexec" &>/dev/null < /dev/null &
+else
+    systemctl kexec
 fi
